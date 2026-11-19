@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>บอร์ดจัดลำดับงาน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface-2:#e4e8ed; --text:#1b2430; --muted:#5d6876; --border:#d5dbe2;
+  --p1:#e5484d; --p2:#f0a020; --p3:#3e7bfa; --p4:#8b95a1; --done:#24a06b; --focus:#3e7bfa;
+  --shadow:0 1px 0 rgba(27,36,48,.06),0 6px 18px -10px rgba(27,36,48,.25);
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#12161c; --surface:#1b222b; --surface-2:#252e39; --text:#e8edf3; --muted:#9aa6b4; --border:#2f3a47;
+    --p1:#ff6369; --p2:#ffb648; --p3:#6b9bff; --p4:#7d8896; --done:#3cc48a; --focus:#6b9bff;
+    --shadow:0 1px 0 rgba(0,0,0,.3),0 8px 22px -12px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;font-size:15px;line-height:1.55}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.wrap{max-width:1360px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-.01em}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.mode{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:.75rem;background:var(--surface-2);color:var(--muted);vertical-align:middle}
+.mode.fb{background:color-mix(in srgb,var(--done) 18%,transparent);color:var(--done)}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer;background:var(--text);color:var(--bg)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.9rem;cursor:pointer}
+
+.summary{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.overall{flex:1 1 220px;min-width:180px}
+.overall-bar{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:6px}
+.overall-bar i{display:block;height:100%;background:var(--done);transition:width .3s}
+.stat{font-size:.88rem;color:var(--muted)}
+.stat b{color:var(--text);font-size:1.05rem;margin-right:3px}
+
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
+@media (max-width:1100px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.board{grid-template-columns:1fr}}
+
+.lane{background:var(--surface-2);border-radius:14px;padding:10px;min-height:120px;border:2px dashed transparent;transition:border-color .15s}
+.lane.over{border-color:var(--pc)}
+.lane-head{display:flex;align-items:center;gap:8px;padding:4px 6px 10px}
+.lane-head .dot{width:10px;height:10px;border-radius:50%;background:var(--pc)}
+.lane-head h2{margin:0;font-size:1rem;font-weight:700}
+.lane-head .hint{color:var(--muted);font-size:.8rem}
+.lane-head .count{margin-left:auto;font-size:.8rem;color:var(--muted);background:var(--surface);padding:0 8px;border-radius:99px}
+.empty{color:var(--muted);font-size:.85rem;text-align:center;padding:18px 8px}
+
+.card{position:relative;background:var(--surface);border-radius:12px;padding:12px 12px 10px 18px;margin-bottom:10px;box-shadow:var(--shadow);cursor:grab;overflow:hidden}
+.card:active{cursor:grabbing}
+.card.dragging{opacity:.45}
+/* แถบสีด้านซ้าย: สีตาม priority และเติมเต็มตามเปอร์เซ็นต์ */
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:color-mix(in srgb,var(--pc) 22%,transparent)}
+.card::after{content:"";position:absolute;left:0;bottom:0;width:6px;height:var(--val);background:var(--pc);transition:height .25s}
+.card.is-done::after{background:var(--done)}
+.card.is-done h3{text-decoration:line-through;color:var(--muted)}
+.card-top{display:flex;gap:10px;align-items:flex-start}
+.card h3{margin:0;font-size:1rem;font-weight:600;flex:1;word-break:break-word}
+.check{appearance:none;width:20px;height:20px;margin:2px 0 0;border:2px solid var(--border);border-radius:6px;cursor:pointer;flex:none;display:grid;place-content:center}
+.check:checked{background:var(--done);border-color:var(--done)}
+.check:checked::after{content:"";width:6px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.icon{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:6px;font-size:.85rem}
+.icon:hover{background:var(--surface-2);color:var(--text)}
+.desc{margin:4px 0 0 30px;color:var(--muted);font-size:.88rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0 30px}
+.pill{font-size:.75rem;padding:1px 8px;border-radius:99px;background:var(--surface-2);color:var(--muted)}
+.pill.doing{background:color-mix(in srgb,var(--p3) 16%,transparent);color:var(--p3)}
+.pill.done{background:color-mix(in srgb,var(--done) 16%,transparent);color:var(--done)}
+.pill.late{background:color-mix(in srgb,var(--p1) 16%,transparent);color:var(--p1)}
+.prog{display:flex;align-items:center;gap:10px;margin:10px 0 0 30px}
+.prog output{min-width:42px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+input[type=range]{flex:1;appearance:none;height:8px;border-radius:99px;cursor:pointer;
+  background:linear-gradient(to right,var(--pc) var(--val),var(--surface-2) var(--val))}
+.is-done input[type=range]{background:linear-gradient(to right,var(--done) var(--val),var(--surface-2) var(--val))}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:var(--surface);border:2px solid var(--text)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--surface);border:2px solid var(--text)}
+.card-foot{display:flex;align-items:center;gap:8px;margin:10px 0 0 30px}
+.card-foot select{flex:1;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:4px 8px;font-size:.85rem}
+.icon.danger:hover{color:var(--p1)}
+
+.banner{display:none;margin-bottom:14px;padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--p1) 14%,var(--surface));color:var(--text);font-size:.9rem}
+.banner.show{display:block}
+
+dialog{border:0;border-radius:16px;padding:0;width:min(480px,calc(100% - 24px));background:var(--surface);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,14,20,.45)}
+dialog form{padding:20px}
+dialog h2{margin:0 0 14px;font-size:1.15rem}
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.field input:not([type=range]),.field textarea,.field select{width:100%;border:1px solid var(--border);background:var(--bg);border-radius:10px;padding:8px 10px}
+.field textarea{min-height:80px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prio-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.prio-pick label{position:relative}
+.prio-pick input{position:absolute;opacity:0}
+.prio-pick span{display:block;text-align:center;padding:7px 4px;border-radius:9px;border:1px solid var(--border);font-size:.82rem;cursor:pointer;color:var(--text)}
+.prio-pick input:checked+span{background:var(--pc);border-color:var(--pc);color:#fff;font-weight:600}
+.prio-pick input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+.dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>งานของฉัน</h1>
+      <p class="sub">ลากการ์ดข้ามช่องหรือเลือกจากเมนูเพื่อเปลี่ยนลำดับความสำคัญ <span id="mode" class="mode">กำลังเชื่อมต่อ…</span></p>
+    </div>
+    <div class="actions">
+      <label class="toggle"><input type="checkbox" id="hideDone"> ซ่อนงานที่เสร็จแล้ว</label>
+      <button class="btn" id="addBtn">+ เพิ่มงาน</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <section class="summary" aria-label="สรุปภาพรวม">
+    <div class="overall">
+      <div class="stat"><b id="avg">0%</b> ความคืบหน้ารวม</div>
+      <div class="overall-bar"><i id="avgBar" style="width:0%"></i></div>
+    </div>
+    <div class="stat"><b id="sTodo">0</b> ยังไม่เริ่ม</div>
+    <div class="stat"><b id="sDoing">0</b> กำลังทำ</div>
+    <div class="stat"><b id="sDone">0</b> เสร็จแล้ว</div>
+    <div class="stat"><b id="sLate">0</b> เลยกำหนด</div>
+  </section>
+
+  <main class="board" id="board"></main>
+</div>
+
+<dialog id="dlg">
+  <form id="form">
+    <h2 id="dlgTitle">เพิ่มงาน</h2>
+    <label class="field"><span>ชื่องาน</span><input name="title" required maxlength="120" placeholder="เช่น ส่งรายงานประจำเดือน"></label>
+    <label class="field"><span>รายละเอียด</span><textarea name="description" maxlength="1000" placeholder="ไม่บังคับ"></textarea></label>
+    <div class="field"><span>ลำดับความสำคัญ</span><div class="prio-pick" id="prioPick"></div></div>
+    <div class="row">
+      <label class="field"><span>กำหนดส่ง</span><input type="date" name="dueDate"></label>
+      <label class="field"><span>ความคืบหน้า: <b id="formPct">0%</b></span><input type="range" name="progress" min="0" max="100" step="5" value="0" style="--pc:var(--text);--val:0%"></label>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="cancelBtn">ยกเลิก</button>
+      <button type="submit" class="btn" id="saveBtn">เพิ่มงาน</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+// ================================================================
+// 1) ใส่ค่า Firebase ของคุณตรงนี้ (Firebase Console > Project settings > Your apps > Web app)
+//    ถ้าเว้นว่างไว้ หน้าเว็บจะทำงานในโหมดทดลอง เก็บข้อมูลไว้ในเบราว์เซอร์เครื่องนี้
+// ================================================================
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const COLLECTION = "tasks";
+const FIREBASE_VERSION = "10.12.2";
+
+// โครงสร้างข้อมูลแต่ละงานใน Firestore (collection "tasks"):
+// { title, description, priority: 1-4, progress: 0-100, dueDate: "YYYY-MM-DD" | "", createdAt, updatedAt }
+
+const PRI = [
+  { key: 1, label: "ด่วนมาก",  hint: "ทำทันที",     color: "var(--p1)" },
+  { key: 2, label: "สำคัญ",    hint: "ทำต่อจากนี้", color: "var(--p2)" },
+  { key: 3, label: "ปกติ",     hint: "วางแผนไว้",   color: "var(--p3)" },
+  { key: 4, label: "ไว้ทีหลัง", hint: "ว่างค่อยทำ",  color: "var(--p4)" }
+];
+
+// ---------------- Data layer ----------------
+async function createStore() {
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+    const { initializeApp } = await import(`${base}/firebase-app.js`);
+    const fs = await import(`${base}/firebase-firestore.js`);
+    const db = fs.getFirestore(initializeApp(firebaseConfig));
+    const col = fs.collection(db, COLLECTION);
+    return {
+      mode: "firebase",
+      subscribe: (cb, onErr) => fs.onSnapshot(col, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onErr),
+      add: t => fs.addDoc(col, { ...t, createdAt: Date.now(), updatedAt: Date.now() }),
+      update: (id, p) => fs.updateDoc(fs.doc(db, COLLECTION, id), { ...p, updatedAt: Date.now() }),
+      remove: id => fs.deleteDoc(fs.doc(db, COLLECTION, id))
+    };
+  }
+  // โหมดทดลอง
+  const KEY = "task-board-demo";
+  const listeners = [];
+  let tasks;
+  try { tasks = JSON.parse(localStorage.getItem(KEY)); } catch { tasks = null; }
+  if (!Array.isArray(tasks)) tasks = seed();
+  const emit = () => {
+    try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch {}
+    listeners.forEach(f => f(tasks.slice()));
+  };
+  return {
+    mode: "local",
+    subscribe: cb => { listeners.push(cb); cb(tasks.slice()); },
+    add: t => { tasks.push({ ...t, id: "t" + Date.now() + Math.random().toString(36).slice(2, 6), createdAt: Date.now(), updatedAt: Date.now() }); emit(); },
+    update: (id, p) => { tasks = tasks.map(x => x.id === id ? { ...x, ...p, updatedAt: Date.now() } : x); emit(); },
+    remove: id => { tasks = tasks.filter(x => x.id !== id); emit(); }
+  };
+}
+
+function seed() {
+  const d = n => { const t = new Date(); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
+  const now = Date.now();
+  return [
+    { id: "s1", title: "ส่งรายงานยอดขายประจำเดือน", description: "สรุปตัวเลขและแนบกราฟเปรียบเทียบเดือนก่อน", priority: 1, progress: 60, dueDate: d(1), createdAt: now, updatedAt: now },
+    { id: "s2", title: "ตอบอีเมลลูกค้าเรื่องใบเสนอราคา", description: "", priority: 1, progress: 0, dueDate: d(-1), createdAt: now, updatedAt: now },
+    { id: "s3", title: "เตรียมสไลด์ประชุมทีม", description: "หัวข้อแผนไตรมาสหน้า", priority: 2, progress: 30, dueDate: d(4), createdAt: now, updatedAt: now },
+    { id: "s4", title: "อัปเดตเอกสารคู่มือพนักงานใหม่", description: "", priority: 3, progress: 100, dueDate: d(7), createdAt: now, updatedAt: now },
+    { id: "s5", title: "จัดโฟลเดอร์ไฟล์ในไดรฟ์", description: "", priority: 4, progress: 10, dueDate: "", createdAt: now, updatedAt: now }
+  ];
+}
+
+// ---------------- Helpers ----------------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clamp = n => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+const today = () => new Date().toISOString().slice(0, 10);
+const statusOf = p => p >= 100 ? { t: "เสร็จแล้ว", c: "done" } : p > 0 ? { t: "กำลังทำ", c: "doing" } : { t: "ยังไม่เริ่ม", c: "" };
+const isLate = t => t.dueDate && t.dueDate < today() && clamp(t.progress) < 100;
+const fmtDate = s => new Date(s + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" });
+
+let store, tasks = [], hideDone = false, editingId = null;
+try { hideDone = localStorage.getItem("task-board-hide-done") === "1"; } catch {}
+$("#hideDone").checked = hideDone;
+
+function showError(msg) { const b = $("#banner"); b.textContent = msg; b.classList.add("show"); }
+
+// ---------------- Render ----------------
+function sortTasks(list) {
+  return list.slice().sort((a, b) => {
+    const da = clamp(a.progress) >= 100, db = clamp(b.progress) >= 100;
+    if (da !== db) return da ? 1 : -1;
+    const ua = a.dueDate || "9999", ub = b.dueDate || "9999";
+    if (ua !== ub) return ua < ub ? -1 : 1;
+    return (a.createdAt || 0) - (b.createdAt || 0);
+  });
+}
+
+function cardHTML(t) {
+  const p = clamp(t.progress), st = statusOf(p), pr = PRI.find(x => x.key === t.priority) || PRI[2];
+  return `
+  <article class="card ${p >= 100 ? "is-done" : ""}" draggable="true" data-id="${esc(t.id)}" style="--pc:${pr.color};--val:${p}%">
+    <div class="card-top">
+      <input type="checkbox" class="check" data-act="done" ${p >= 100 ? "checked" : ""} aria-label="ทำเครื่องหมายว่าเสร็จแล้ว">
+      <h3>${esc(t.title)}</h3>
+      <button class="icon" data-act="edit" aria-label="แก้ไขงาน">แก้ไข</button>
+    </div>
+    ${t.description ? `<p class="desc">${esc(t.description)}</p>` : ""}
+    <div class="meta">
+      <span class="pill ${st.c}">${st.t}</span>
+      ${t.dueDate ? `<span class="pill ${isLate(t) ? "late" : ""}">${isLate(t) ? "เลยกำหนด " : "ส่ง "}${fmtDate(t.dueDate)}</span>` : ""}
+    </div>
+    <div class="prog">
+      <input type="range" min="0" max="100" step="5" value="${p}" data-act="progress" aria-label="ความคืบหน้าเป็นเปอร์เซ็นต์">
+      <output>${p}%</output>
+    </div>
+    <div class="card-foot">
+      <select data-act="priority" aria-label="ลำดับความสำคัญ">
+        ${PRI.map(x => `<option value="${x.key}" ${x.key === pr.key ? "selected" : ""}>${x.label}</option>`).join("")}
+      </select>
+      <button class="icon danger" data-act="delete" aria-label="ลบงาน">ลบ</button>
+    </div>
+  </article>`;
+}
+
+function render() {
+  const visible = hideDone ? tasks.filter(t => clamp(t.progress) < 100) : tasks;
+  $("#board").innerHTML = PRI.map(pr => {
+    const list = sortTasks(visible.filter(t => (t.priority || 3) === pr.key));
+    return `
+    <section class="lane" data-priority="${pr.key}" style="--pc:${pr.color}">
+      <div class="lane-head">
+        <span class="dot"></span><h2>${pr.label}</h2><span class="hint">${pr.hint}</span>
+        <span class="count">${list.length}</span>
+      </div>
+      ${list.length ? list.map(cardHTML).join("") : `<div class="empty">ลากงานมาวางที่นี่</div>`}
+    </section>`;
+  }).join("");
+
+  const total = tasks.length;
+  const done = tasks.filter(t => clamp(t.progress) >= 100).length;
+  const doing = tasks.filter(t => { const p = clamp(t.progress); return p > 0 && p < 100; }).length;
+  const avg = total ? Math.round(tasks.reduce((s, t) => s + clamp(t.progress), 0) / total) : 0;
+  $("#avg").textContent = avg + "%";
+  $("#avgBar").style.width = avg + "%";
+  $("#sTodo").textContent = total - done - doing;
+  $("#sDoing").textContent = doing;
+  $("#sDone").textContent = done;
+  $("#sLate").textContent = tasks.filter(isLate).length;
+}
+
+// ---------------- Actions ----------------
+const safe = fn => Promise.resolve().then(fn).catch(e => showError("บันทึกไม่สำเร็จ: " + (e.message || e) + " — ตรวจสอบ Security Rules ของ Firestore"));
+
+const board = $("#board");
+board.addEventListener("input", e => {
+  if (e.target.dataset.act !== "progress") return;
+  const card = e.target.closest(".card"), v = clamp(e.target.value);
+  card.style.setProperty("--val", v + "%");
+  card.querySelector("output").textContent = v + "%";
+});
+board.addEventListener("change", e => {
+  const card = e.target.closest(".card"); if (!card) return;
+  const id = card.dataset.id, act = e.target.dataset.act;
+  if (act === "progress") safe(() => store.update(id, { progress: clamp(e.target.value) }));
+  if (act === "priority") safe(() => store.update(id, { priority: Number(e.target.value) }));
+  if (act === "done") safe(() => store.update(id, { progress: e.target.checked ? 100 : 0 }));
+});
+board.addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]"); if (!btn) return;
+  const id = btn.closest(".card").dataset.id;
+  if (btn.dataset.act === "edit") openDialog(tasks.find(t => t.id === id));
+  if (btn.dataset.act === "delete") {
+    const t = tasks.find(x => x.id === id);
+    if (confirm(`ลบงาน “${t?.title ?? ""}” ใช่ไหม`)) safe(() => store.remove(id));
+  }
+});
+
+// ลากวางเพื่อเปลี่ยน priority
+board.addEventListener("dragstart", e => {
+  const card = e.target.closest(".card"); if (!card) return;
+  if (e.target.matches("input,select,button")) { e.preventDefault(); return; }
+  e.dataTransfer.setData("text/plain", card.dataset.id);
+  e.dataTransfer.effectAllowed = "move";
+  card.classList.add("dragging");
+});
+board.addEventListener("dragend", e => e.target.closest?.(".card")?.classList.remove("dragging"));
+board.addEventListener("dragover", e => {
+  const lane = e.target.closest(".lane"); if (!lane) return;
+  e.preventDefault();
+  document.querySelectorAll(".lane.over").forEach(l => l !== lane && l.classList.remove("over"));
+  lane.classList.add("over");
+});
+board.addEventListener("dragleave", e => {
+  const lane = e.target.closest(".lane");
+  if (lane && !lane.contains(e.relatedTarget)) lane.classList.remove("over");
+});
+board.addEventListener("drop", e => {
+  const lane = e.target.closest(".lane"); if (!lane) return;
+  e.preventDefault(); lane.classList.remove("over");
+  const id = e.dataTransfer.getData("text/plain"), pr = Number(lane.dataset.priority);
+  const t = tasks.find(x => x.id === id);
+  if (t && t.priority !== pr) safe(() => store.update(id, { priority: pr }));
+});
+
+$("#hideDone").addEventListener("change", e => {
+  hideDone = e.target.checked;
+  try { localStorage.setItem("task-board-hide-done", hideDone ? "1" : "0"); } catch {}
+  render();
+});
+
+// ---------------- Dialog ----------------
+const dlg = $("#dlg"), form = $("#form");
+$("#prioPick").innerHTML = PRI.map(p =>
+  `<label style="--pc:${p.color}"><input type="radio" name="priority" value="${p.key}"><span>${p.label}</span></label>`).join("");
+const formRange = form.elements.progress;
+formRange.addEventListener("input", () => {
+  $("#formPct").textContent = formRange.value + "%";
+  formRange.style.setProperty("--val", formRange.value + "%");
+});
+
+function openDialog(t) {
+  editingId = t?.id ?? null;
+  $("#dlgTitle").textContent = t ? "แก้ไขงาน" : "เพิ่มงาน";
+  $("#saveBtn").textContent = t ? "บันทึกการแก้ไข" : "เพิ่มงาน";
+  form.reset();
+  form.elements.title.value = t?.title ?? "";
+  form.elements.description.value = t?.description ?? "";
+  form.elements.dueDate.value = t?.dueDate ?? "";
+  formRange.value = clamp(t?.progress ?? 0);
+  formRange.dispatchEvent(new Event("input"));
+  const pr = t?.priority ?? 2;
+  form.querySelector(`input[name=priority][value="${pr}"]`).checked = true;
+  dlg.showModal();
+  form.elements.title.focus();
+}
+$("#addBtn").addEventListener("click", () => openDialog(null));
+$("#cancelBtn").addEventListener("click", () => dlg.close());
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  const data = {
+    title: form.elements.title.value.trim(),
+    description: form.elements.description.value.trim(),
+    priority: Number(form.querySelector("input[name=priority]:checked")?.value || 2),
+    progress: clamp(formRange.value),
+    dueDate: form.elements.dueDate.value || ""
+  };
+  if (!data.title) return;
+  const id = editingId;
+  safe(() => id ? store.update(id, data) : store.add(data));
+  dlg.close();
+});
+
+// ---------------- Start ----------------
+try {
+  store = await createStore();
+  const m = $("#mode");
+  m.textContent = store.mode === "firebase" ? "เชื่อมต่อ Firebase แล้ว" : "โหมดทดลอง: เก็บในเครื่องนี้";
+  m.classList.toggle("fb", store.mode === "firebase");
+  store.subscribe(list => { tasks = list; render(); },
+    err => showError("โหลดข้อมูลจาก Firestore ไม่ได้: " + err.message));
+} catch (e) {
+  showError("เชื่อมต่อ Firebase ไม่สำเร็จ: " + (e.message || e) + " — ตรวจสอบค่า firebaseConfig");
+}
+</script>
+</body>
+</html>
