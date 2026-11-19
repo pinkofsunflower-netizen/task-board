@@ -114,11 +114,41 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
 .prio-pick input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
 .dlg-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 
+[hidden]{display:none!important}
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.tab{border:0;background:transparent;padding:8px 16px;font-weight:600;font-size:1rem;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--text)}
+.tab .n{font-size:.75rem;font-weight:500;margin-left:6px;background:var(--surface-2);padding:0 7px;border-radius:99px}
+.prio-pick.two{grid-template-columns:1fr 1fr}
+.prio-pick.two input:checked+span{color:var(--bg)}
+.login{min-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));display:grid;place-items:center;padding:24px}
+.login-box{max-width:380px;text-align:center}
+.login-box h1{font-size:1.8rem}
+.login-box p{color:var(--muted);margin:8px 0 22px}
+.login-box .login-err{color:var(--p1);margin-top:14px;font-size:.9rem}
+.user{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted)}
+.user img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+.user .btn{padding:6px 12px;font-size:.85rem}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<section class="login" id="login" hidden>
+  <div class="login-box">
+    <h1>บอร์ดจัดลำดับงาน</h1>
+    <p>เข้าสู่ระบบเพื่อจัดการงานของคุณ งานจะบันทึกไว้ในบัญชีของคุณเท่านั้น เปิดจากเครื่องไหนก็เห็นเหมือนกัน</p>
+    <button class="btn" id="loginBtn">เข้าสู่ระบบด้วย Google</button>
+    <p class="login-err" id="loginErr" role="alert"></p>
+  </div>
+</section>
+
+<div class="wrap" id="app" hidden>
+  <div class="user" id="user" hidden style="justify-content:flex-end;margin-bottom:10px">
+    <img id="avatar" alt="" referrerpolicy="no-referrer" hidden>
+    <span id="uname"></span>
+    <button class="btn ghost" id="logoutBtn">ออกจากระบบ</button>
+  </div>
   <header>
     <div>
       <h1>งานของฉัน</h1>
@@ -129,6 +159,11 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
       <button class="btn" id="addBtn">+ เพิ่มงาน</button>
     </div>
   </header>
+
+  <nav class="tabs" role="tablist" aria-label="ประเภทงาน">
+    <button class="tab" role="tab" data-tab="work">งาน<span class="n" id="nWork">0</span></button>
+    <button class="tab" role="tab" data-tab="personal">ส่วนตัว<span class="n" id="nPersonal">0</span></button>
+  </nav>
 
   <div class="banner" id="banner"></div>
 
@@ -151,6 +186,10 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
     <h2 id="dlgTitle">เพิ่มงาน</h2>
     <label class="field"><span>ชื่องาน</span><input name="title" required maxlength="120" placeholder="เช่น ส่งรายงานประจำเดือน"></label>
     <label class="field"><span>รายละเอียด</span><textarea name="description" maxlength="1000" placeholder="ไม่บังคับ"></textarea></label>
+    <div class="field"><span>ประเภท</span><div class="prio-pick two">
+      <label style="--pc:var(--text)"><input type="radio" name="category" value="work"><span>งาน</span></label>
+      <label style="--pc:var(--text)"><input type="radio" name="category" value="personal"><span>ส่วนตัว</span></label>
+    </div></div>
     <div class="field"><span>ลำดับความสำคัญ</span><div class="prio-pick" id="prioPick"></div></div>
     <div class="row">
       <label class="field"><span>กำหนดส่ง</span><input type="date" name="dueDate"></label>
@@ -179,7 +218,7 @@ const firebaseConfig = {
 const COLLECTION = "tasks";
 const FIREBASE_VERSION = "10.12.2";
 
-// โครงสร้างข้อมูลแต่ละงานใน Firestore (collection "tasks"):
+// โครงสร้างข้อมูลแต่ละงานใน Firestore (users/{uid}/tasks/{taskId}):
 // { title, description, priority: 1-4, progress: 0-100, dueDate: "YYYY-MM-DD" | "", createdAt, updatedAt }
 
 const PRI = [
@@ -190,22 +229,34 @@ const PRI = [
 ];
 
 // ---------------- Data layer ----------------
-async function createStore() {
-  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
-    const { initializeApp } = await import(`${base}/firebase-app.js`);
-    const fs = await import(`${base}/firebase-firestore.js`);
-    const db = fs.getFirestore(initializeApp(firebaseConfig));
-    const col = fs.collection(db, COLLECTION);
-    return {
-      mode: "firebase",
-      subscribe: (cb, onErr) => fs.onSnapshot(col, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onErr),
-      add: t => fs.addDoc(col, { ...t, createdAt: Date.now(), updatedAt: Date.now() }),
-      update: (id, p) => fs.updateDoc(fs.doc(db, COLLECTION, id), { ...p, updatedAt: Date.now() }),
-      remove: id => fs.deleteDoc(fs.doc(db, COLLECTION, id))
-    };
-  }
-  // โหมดทดลอง
+const isConfigured = () => !!(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+async function loadFirebase() {
+  const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+  const [{ initializeApp }, fs, au] = await Promise.all([
+    import(`${base}/firebase-app.js`),
+    import(`${base}/firebase-firestore.js`),
+    import(`${base}/firebase-auth.js`)
+  ]);
+  const app = initializeApp(firebaseConfig);
+  return { fs, au, db: fs.getFirestore(app), auth: au.getAuth(app) };
+}
+
+// งานของแต่ละคนเก็บแยกไว้ที่ users/{uid}/tasks — Security Rules อนุญาตเฉพาะเจ้าของ
+function firestoreStore({ fs, db }, uid) {
+  const col = fs.collection(db, "users", uid, COLLECTION);
+  const ref = id => fs.doc(db, "users", uid, COLLECTION, id);
+  return {
+    mode: "firebase",
+    subscribe: (cb, onErr) => fs.onSnapshot(col, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onErr),
+    add: t => fs.addDoc(col, { ...t, createdAt: Date.now(), updatedAt: Date.now() }),
+    update: (id, p) => fs.updateDoc(ref(id), { ...p, updatedAt: Date.now() }),
+    remove: id => fs.deleteDoc(ref(id))
+  };
+}
+
+// โหมดทดลอง (ใช้เมื่อยังไม่ได้ใส่ firebaseConfig)
+function localStore() {
   const KEY = "task-board-demo";
   const listeners = [];
   let tasks;
@@ -232,7 +283,8 @@ function seed() {
     { id: "s2", title: "ตอบอีเมลลูกค้าเรื่องใบเสนอราคา", description: "", priority: 1, progress: 0, dueDate: d(-1), createdAt: now, updatedAt: now },
     { id: "s3", title: "เตรียมสไลด์ประชุมทีม", description: "หัวข้อแผนไตรมาสหน้า", priority: 2, progress: 30, dueDate: d(4), createdAt: now, updatedAt: now },
     { id: "s4", title: "อัปเดตเอกสารคู่มือพนักงานใหม่", description: "", priority: 3, progress: 100, dueDate: d(7), createdAt: now, updatedAt: now },
-    { id: "s5", title: "จัดโฟลเดอร์ไฟล์ในไดรฟ์", description: "", priority: 4, progress: 10, dueDate: "", createdAt: now, updatedAt: now }
+    { id: "s5", title: "จัดตู้เสื้อผ้า", description: "", category: "personal", priority: 4, progress: 10, dueDate: "", createdAt: now, updatedAt: now },
+    { id: "s6", title: "นัดหมอฟัน", description: "โทรนัดช่วงเย็นวันธรรมดา", category: "personal", priority: 2, progress: 0, dueDate: d(3), createdAt: now, updatedAt: now }
   ];
 }
 
@@ -248,6 +300,17 @@ const fmtDate = s => new Date(s + "T00:00:00").toLocaleDateString("th-TH", { day
 let store, tasks = [], hideDone = false, editingId = null;
 try { hideDone = localStorage.getItem("task-board-hide-done") === "1"; } catch {}
 $("#hideDone").checked = hideDone;
+
+// แท็บ: "work" = งาน, "personal" = ส่วนตัว (งานเก่าที่ไม่มีประเภทนับเป็นงาน)
+const catOf = t => t.category === "personal" ? "personal" : "work";
+let tab = "work";
+try { if (localStorage.getItem("task-board-tab") === "personal") tab = "personal"; } catch {}
+document.querySelector(".tabs").addEventListener("click", e => {
+  const b = e.target.closest(".tab"); if (!b) return;
+  tab = b.dataset.tab;
+  try { localStorage.setItem("task-board-tab", tab); } catch {}
+  render();
+});
 
 function showError(msg) { const b = $("#banner"); b.textContent = msg; b.classList.add("show"); }
 
@@ -290,7 +353,12 @@ function cardHTML(t) {
 }
 
 function render() {
-  const visible = hideDone ? tasks.filter(t => clamp(t.progress) < 100) : tasks;
+  const inTab = tasks.filter(t => catOf(t) === tab);
+  const visible = hideDone ? inTab.filter(t => clamp(t.progress) < 100) : inTab;
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  const open = c => tasks.filter(t => catOf(t) === c && clamp(t.progress) < 100).length;
+  $("#nWork").textContent = open("work");
+  $("#nPersonal").textContent = open("personal");
   $("#board").innerHTML = PRI.map(pr => {
     const list = sortTasks(visible.filter(t => (t.priority || 3) === pr.key));
     return `
@@ -303,16 +371,16 @@ function render() {
     </section>`;
   }).join("");
 
-  const total = tasks.length;
-  const done = tasks.filter(t => clamp(t.progress) >= 100).length;
-  const doing = tasks.filter(t => { const p = clamp(t.progress); return p > 0 && p < 100; }).length;
-  const avg = total ? Math.round(tasks.reduce((s, t) => s + clamp(t.progress), 0) / total) : 0;
+  const total = inTab.length;
+  const done = inTab.filter(t => clamp(t.progress) >= 100).length;
+  const doing = inTab.filter(t => { const p = clamp(t.progress); return p > 0 && p < 100; }).length;
+  const avg = total ? Math.round(inTab.reduce((s, t) => s + clamp(t.progress), 0) / total) : 0;
   $("#avg").textContent = avg + "%";
   $("#avgBar").style.width = avg + "%";
   $("#sTodo").textContent = total - done - doing;
   $("#sDoing").textContent = doing;
   $("#sDone").textContent = done;
-  $("#sLate").textContent = tasks.filter(isLate).length;
+  $("#sLate").textContent = inTab.filter(isLate).length;
 }
 
 // ---------------- Actions ----------------
@@ -397,6 +465,7 @@ function openDialog(t) {
   formRange.dispatchEvent(new Event("input"));
   const pr = t?.priority ?? 2;
   form.querySelector(`input[name=priority][value="${pr}"]`).checked = true;
+  form.querySelector(`input[name=category][value="${t ? catOf(t) : tab}"]`).checked = true;
   dlg.showModal();
   form.elements.title.focus();
 }
@@ -407,6 +476,7 @@ form.addEventListener("submit", e => {
   const data = {
     title: form.elements.title.value.trim(),
     description: form.elements.description.value.trim(),
+    category: form.querySelector("input[name=category]:checked")?.value === "personal" ? "personal" : "work",
     priority: Number(form.querySelector("input[name=priority]:checked")?.value || 2),
     progress: clamp(formRange.value),
     dueDate: form.elements.dueDate.value || ""
@@ -418,15 +488,70 @@ form.addEventListener("submit", e => {
 });
 
 // ---------------- Start ----------------
-try {
-  store = await createStore();
+let unsubscribe = null;
+const showApp = on => { $("#app").hidden = !on; $("#login").hidden = on; };
+function setMode(mode) {
   const m = $("#mode");
-  m.textContent = store.mode === "firebase" ? "เชื่อมต่อ Firebase แล้ว" : "โหมดทดลอง: เก็บในเครื่องนี้";
-  m.classList.toggle("fb", store.mode === "firebase");
-  store.subscribe(list => { tasks = list; render(); },
-    err => showError("โหลดข้อมูลจาก Firestore ไม่ได้: " + err.message));
-} catch (e) {
-  showError("เชื่อมต่อ Firebase ไม่สำเร็จ: " + (e.message || e) + " — ตรวจสอบค่า firebaseConfig");
+  m.textContent = mode === "firebase" ? "บันทึกลง Firebase" : "โหมดทดลอง: เก็บในเครื่องนี้";
+  m.classList.toggle("fb", mode === "firebase");
+}
+function loginError(e) {
+  if (e.code === "auth/unauthorized-domain")
+    return "โดเมนนี้ยังไม่ได้รับอนุญาต เพิ่ม " + location.hostname + " ใน Firebase Console > Authentication > Settings > Authorized domains";
+  if (e.code === "auth/operation-not-allowed")
+    return "ยังไม่ได้เปิดการเข้าสู่ระบบด้วย Google ใน Firebase Console > Authentication > Sign-in method";
+  return "เข้าสู่ระบบไม่สำเร็จ: " + (e.message || e.code);
+}
+
+if (isConfigured()) {
+  try {
+    const fb = await loadFirebase();
+    const { au, auth } = fb;
+    const provider = new au.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    $("#loginBtn").addEventListener("click", async () => {
+      $("#loginErr").textContent = "";
+      try {
+        await au.signInWithPopup(auth, provider);
+      } catch (e) {
+        if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") {
+          au.signInWithRedirect(auth, provider);
+        } else if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
+          $("#loginErr").textContent = loginError(e);
+        }
+      }
+    });
+    $("#logoutBtn").addEventListener("click", () => au.signOut(auth));
+
+    au.onAuthStateChanged(auth, user => {
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      tasks = [];
+      $("#banner").classList.remove("show");
+      if (!user) { store = null; showApp(false); return; }
+
+      $("#user").hidden = false;
+      $("#uname").textContent = user.displayName || user.email || "";
+      const av = $("#avatar");
+      av.hidden = !user.photoURL;
+      if (user.photoURL) av.src = user.photoURL;
+
+      setMode("firebase");
+      store = firestoreStore(fb, user.uid);
+      showApp(true);
+      render();
+      unsubscribe = store.subscribe(list => { tasks = list; render(); },
+        err => showError("โหลดข้อมูลจาก Firestore ไม่ได้: " + err.message + " — ตรวจสอบ Security Rules"));
+    });
+  } catch (e) {
+    showApp(true);
+    showError("เชื่อมต่อ Firebase ไม่สำเร็จ: " + (e.message || e) + " — ตรวจสอบค่า firebaseConfig");
+  }
+} else {
+  store = localStore();
+  setMode("local");
+  showApp(true);
+  store.subscribe(list => { tasks = list; render(); });
 }
 </script>
 </body>
