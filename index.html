@@ -18,6 +18,7 @@
   --bg:#eef1f4; --surface:#ffffff; --surface-2:#e4e8ed; --text:#1b2430; --muted:#5d6876; --border:#d5dbe2;
   --p1:#e5484d; --p2:#f0a020; --p3:#3e7bfa; --p4:#8b95a1; --done:#24a06b; --focus:#3e7bfa;
   --shadow:0 1px 0 rgba(27,36,48,.06),0 6px 18px -10px rgba(27,36,48,.25);
+  --accent:#3e5c86; --on-accent:#ffffff;
   color-scheme:light;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -44,7 +45,7 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-.01em}
 .mode{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:.75rem;background:var(--surface-2);color:var(--muted);vertical-align:middle}
 .mode.fb{background:color-mix(in srgb,var(--done) 18%,transparent);color:var(--done)}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.btn{border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer;background:var(--text);color:var(--bg)}
+.btn{border:0;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer;background:var(--accent);color:var(--on-accent)}
 .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
 .toggle{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.9rem;cursor:pointer}
 
@@ -123,10 +124,28 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
 [hidden]{display:none!important}
 .tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
 .tab{border:0;background:transparent;padding:8px 16px;font-weight:600;font-size:1rem;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
-.tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--text)}
+.tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
 .tab .n{font-size:.75rem;font-weight:500;margin-left:6px;background:var(--surface-2);padding:0 7px;border-radius:99px}
 .prio-pick.two{grid-template-columns:1fr 1fr}
-.prio-pick.two input:checked+span{color:var(--bg)}
+.prio-pick.two input:checked+span{color:var(--on-accent)}
+.dlg-body{padding:20px}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:8px;cursor:pointer;color:var(--muted);font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.sw{border:2px solid transparent;background:transparent;border-radius:12px;padding:6px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:.74rem;line-height:1.3}
+.sw[aria-pressed="true"]{border-color:var(--accent);color:var(--text)}
+.chip{width:40px;height:40px;border-radius:50%;border:1px solid;display:grid;place-items:center}
+.chip i{display:block;width:20px;height:20px;border-radius:50%}
+.field.custom{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.field.custom span{margin:0}
+.field.custom input[type=color]{width:56px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:2px;cursor:pointer}
+.preview{display:flex;gap:10px;align-items:center;padding:12px;border-radius:12px;background:var(--bg);border:1px solid var(--border);margin-bottom:12px}
+.preview .mini{flex:1;background:var(--surface);border-radius:10px;padding:8px 10px;box-shadow:var(--shadow);font-size:.88rem;font-weight:600}
+.preview .mini small{color:var(--muted);display:block;font-weight:400}
+.preview .dots{display:flex;gap:4px;margin-top:4px}
+.preview .dots i{display:block;width:10px;height:10px;border-radius:50%}
+.preview .btn{padding:7px 12px;font-size:.85rem}
 .icon:disabled{opacity:.3;cursor:default;background:transparent}
 .drop-line{height:4px;border-radius:2px;background:var(--pc);margin:0 0 10px}
 .today-head h2{margin:0;font-size:1.25rem}
@@ -183,6 +202,7 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
     </div>
     <div class="actions">
       <label class="toggle" id="hideDoneWrap"><input type="checkbox" id="hideDone"> ซ่อนงานที่เสร็จแล้ว</label>
+      <button class="btn ghost" id="themeBtn">ธีมสี</button>
       <button class="btn" id="addBtn">+ เพิ่มงาน</button>
     </div>
   </header>
@@ -216,8 +236,8 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
     <label class="field"><span>ชื่องาน</span><input name="title" required maxlength="120" placeholder="เช่น ส่งรายงานประจำเดือน"></label>
     <label class="field"><span>รายละเอียด</span><textarea name="description" maxlength="1000" placeholder="ไม่บังคับ"></textarea></label>
     <div class="field"><span>ประเภท</span><div class="prio-pick two">
-      <label style="--pc:var(--text)"><input type="radio" name="category" value="work"><span>งาน</span></label>
-      <label style="--pc:var(--text)"><input type="radio" name="category" value="personal"><span>ส่วนตัว</span></label>
+      <label style="--pc:var(--accent)"><input type="radio" name="category" value="work"><span>งาน</span></label>
+      <label style="--pc:var(--accent)"><input type="radio" name="category" value="personal"><span>ส่วนตัว</span></label>
     </div></div>
     <div class="field"><span>ลำดับความสำคัญ</span><div class="prio-pick" id="prioPick"></div></div>
     <div class="row">
@@ -229,6 +249,33 @@ dialog h2{margin:0 0 14px;font-size:1.15rem}
       <button type="submit" class="btn" id="saveBtn">เพิ่มงาน</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="themeDlg" aria-labelledby="themeTitle">
+  <div class="dlg-body">
+    <h2 id="themeTitle">ธีมสี</h2>
+    <div class="field"><span>โหมด</span>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-mode="auto">อัตโนมัติ</button>
+        <button type="button" data-mode="light">สว่าง</button>
+        <button type="button" data-mode="dark">มืด</button>
+      </div>
+    </div>
+    <div class="field"><span>เลือกสีหลัก แล้วระบบจะจับคู่สีพื้นหลัง ตัวอักษร และปุ่มให้เอง</span>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <label class="field custom"><span>หรือเลือกสีเอง</span><input type="color" id="customColor" aria-label="เลือกสีหลักเอง"></label>
+    <div class="preview" aria-hidden="true">
+      <div class="mini">ตัวอย่างการ์ดงาน<small>รายละเอียดงาน</small>
+        <div class="dots"><i style="background:var(--p1)"></i><i style="background:var(--p2)"></i><i style="background:var(--p3)"></i><i style="background:var(--p4)"></i></div>
+      </div>
+      <span class="btn">ปุ่ม</span>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="themeReset">ค่าเริ่มต้น</button>
+      <button type="button" class="btn" id="themeClose">เสร็จ</button>
+    </div>
+  </div>
 </dialog>
 
 <script type="module">
@@ -283,7 +330,10 @@ function firestoreStore({ fs, db }, uid) {
     subscribe: (cb, onErr) => fs.onSnapshot(col, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onErr),
     add: t => fs.addDoc(col, { ...t, createdAt: Date.now(), updatedAt: Date.now() }),
     update: (id, p) => fs.updateDoc(ref(id), { ...p, updatedAt: Date.now() }),
-    remove: id => fs.deleteDoc(ref(id))
+    remove: id => fs.deleteDoc(ref(id)),
+    // การตั้งค่าส่วนตัว (เช่น ธีมสี) เก็บที่ users/{uid}
+    loadSettings: () => fs.getDoc(fs.doc(db, "users", uid)).then(s => s.exists() ? s.data() : null),
+    saveSettings: data => fs.setDoc(fs.doc(db, "users", uid), data, { merge: true })
   };
 }
 
@@ -303,7 +353,9 @@ function localStore() {
     subscribe: cb => { listeners.push(cb); cb(tasks.slice()); },
     add: t => { tasks.push({ ...t, id: "t" + Date.now() + Math.random().toString(36).slice(2, 6), createdAt: Date.now(), updatedAt: Date.now() }); emit(); },
     update: (id, p) => { tasks = tasks.map(x => x.id === id ? { ...x, ...p, updatedAt: Date.now() } : x); emit(); },
-    remove: id => { tasks = tasks.filter(x => x.id !== id); emit(); }
+    remove: id => { tasks = tasks.filter(x => x.id !== id); emit(); },
+    loadSettings: async () => null,
+    saveSettings: async () => {}
   };
 }
 
@@ -329,6 +381,110 @@ const today = () => localDate();
 const statusOf = p => p >= 100 ? { t: "เสร็จแล้ว", c: "done" } : p > 0 ? { t: "กำลังทำ", c: "doing" } : { t: "ยังไม่เริ่ม", c: "" };
 const isLate = t => t.dueDate && t.dueDate < today() && clamp(t.progress) < 100;
 const fmtDate = s => new Date(s + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "short" });
+
+// ---------------- ธีมสี: เลือกสีหลักสีเดียว แล้วจับคู่สีที่เหลือให้อัตโนมัติ ----------------
+const PRESETS = [
+  { name: "เทาน้ำเงิน", base: "#3e5c86" },
+  { name: "ฟ้าคราม", base: "#2f6fe0" },
+  { name: "เขียวมิ้นต์", base: "#14a38b" },
+  { name: "เขียวมะกอก", base: "#6b8e23" },
+  { name: "ม่วงลาเวนเดอร์", base: "#7c5cd6" },
+  { name: "ชมพูกุหลาบ", base: "#d6457a" },
+  { name: "ส้มพีช", base: "#e0773a" },
+  { name: "น้ำตาลกาแฟ", base: "#8a5a3c" }
+];
+const DEFAULT_THEME = { base: PRESETS[0].base, mode: "auto" };
+const validTheme = t => !!t && /^#[0-9a-f]{6}$/i.test(t.base) && ["auto", "light", "dark"].includes(t.mode);
+let theme = { ...DEFAULT_THEME };
+try { const s = JSON.parse(localStorage.getItem("task-board-theme")); if (validTheme(s)) theme = s; } catch {}
+
+function hexToHsl(hex) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  let h = 0, s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > .5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, s * 100, l * 100];
+}
+function hslToHex(h, s, l) {
+  s = Math.max(0, Math.min(100, s)) / 100; l = Math.max(0, Math.min(100, l)) / 100;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return "#" + [f(0), f(8), f(4)].map(x => Math.round(x * 255).toString(16).padStart(2, "0")).join("");
+}
+function luminance(hex) {
+  const c = [1, 3, 5].map(i => { const v = parseInt(hex.slice(i, i + 2), 16) / 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
+  return .2126 * c[0] + .7152 * c[1] + .0722 * c[2];
+}
+const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
+
+function makePalette(base, dark) {
+  const [h, s0] = hexToHsl(base);
+  const s = Math.min(s0, 90);
+  const ns = s < 8 ? 0 : Math.min(s * .35, 22);   // ความอิ่มสีของพื้นหลังและเส้นขอบ (อมสีหลักเล็กน้อย)
+  const as = Math.max(s, 35);                       // ความอิ่มสีของปุ่มและจุดเน้น
+  const p = dark ? {
+    bg: hslToHex(h, ns * .8, 8), surface: hslToHex(h, ns * .8, 12), "surface-2": hslToHex(h, ns * .7, 17),
+    border: hslToHex(h, ns * .6, 23), text: hslToHex(h, ns * .5, 93), muted: hslToHex(h, ns * .5, 66),
+    p1: "#ff6369", p2: "#ffb648", p3: "#6b9bff", p4: hslToHex(h, ns * .6, 55), done: "#3cc48a",
+    shadow: "0 1px 0 rgba(0,0,0,.3),0 8px 22px -12px rgba(0,0,0,.7)"
+  } : {
+    bg: hslToHex(h, ns, 95), surface: hslToHex(h, ns * .4, 99.5), "surface-2": hslToHex(h, ns, 90),
+    border: hslToHex(h, ns * .8, 84), text: hslToHex(h, ns * 1.2, 14), muted: hslToHex(h, ns * .6, 38),
+    p1: "#e5484d", p2: "#f0a020", p3: "#3e7bfa", p4: hslToHex(h, ns * .6, 58), done: "#24a06b",
+    shadow: "0 1px 0 rgba(27,36,48,.06),0 6px 18px -10px rgba(27,36,48,.25)"
+  };
+  // ปรับความสว่างของสีเน้นจนอ่านออกชัดบนพื้นการ์ด
+  let L = dark ? 66 : 44, accent = hslToHex(h, as, L);
+  for (let i = 0; i < 20 && contrast(accent, p.surface) < 3.2; i++) accent = hslToHex(h, as, L += dark ? 3 : -3);
+  p.accent = accent;
+  p["on-accent"] = contrast("#ffffff", accent) >= contrast("#111111", accent) ? "#ffffff" : "#111111";
+  p.focus = accent;
+  return p;
+}
+
+const mq = matchMedia("(prefers-color-scheme: dark)");
+const isDarkMode = () => theme.mode === "dark" || (theme.mode === "auto" && mq.matches);
+function applyTheme() {
+  const dark = isDarkMode(), pal = makePalette(theme.base, dark), root = document.documentElement;
+  Object.entries(pal).forEach(([k, v]) => root.style.setProperty("--" + k, v));
+  root.style.colorScheme = dark ? "dark" : "light";
+  root.dataset.theme = dark ? "dark" : "light";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", pal.bg);
+  if ($("#themeDlg").open) renderThemeDlg();
+}
+mq.addEventListener("change", () => { if (theme.mode === "auto") applyTheme(); });
+
+function setTheme(next, persist = true) {
+  theme = next;
+  applyTheme();
+  if (!persist) return;
+  try { localStorage.setItem("task-board-theme", JSON.stringify(theme)); } catch {}
+  if (store?.saveSettings) store.saveSettings({ theme }).catch(() => {});
+}
+
+function renderThemeDlg() {
+  const dark = isDarkMode();
+  document.querySelectorAll("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === theme.mode)));
+  $("#swatches").innerHTML = PRESETS.map(p => {
+    const pal = makePalette(p.base, dark);
+    return `<button type="button" class="sw" data-base="${p.base}" aria-pressed="${p.base.toLowerCase() === theme.base.toLowerCase()}">
+      <span class="chip" style="background:${pal.bg};border-color:${pal.border}"><i style="background:${pal.accent}"></i></span>${p.name}</button>`;
+  }).join("");
+  $("#customColor").value = theme.base;
+}
+$("#themeBtn").addEventListener("click", () => { renderThemeDlg(); $("#themeDlg").showModal(); });
+$("#themeClose").addEventListener("click", () => $("#themeDlg").close());
+$("#themeReset").addEventListener("click", () => setTheme({ ...DEFAULT_THEME }));
+$("#modeSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTheme({ ...theme, mode: b.dataset.mode }); });
+$("#swatches").addEventListener("click", e => { const b = e.target.closest(".sw"); if (b) setTheme({ ...theme, base: b.dataset.base }); });
+$("#customColor").addEventListener("input", e => setTheme({ ...theme, base: e.target.value }, false));
+$("#customColor").addEventListener("change", e => setTheme({ ...theme, base: e.target.value }));
+applyTheme();
 
 let store, tasks = [], hideDone = false, editingId = null;
 try { hideDone = localStorage.getItem("task-board-hide-done") === "1"; } catch {}
@@ -699,6 +855,13 @@ if (isConfigured()) {
 
       setMode("firebase");
       store = firestoreStore(fb, user.uid);
+      store.loadSettings().then(d => {
+        if (validTheme(d?.theme)) {
+          theme = d.theme;
+          try { localStorage.setItem("task-board-theme", JSON.stringify(theme)); } catch {}
+          applyTheme();
+        }
+      }).catch(() => {});
       showApp(true);
       render();
       unsubscribe = store.subscribe(list => { tasks = list; render(); },
